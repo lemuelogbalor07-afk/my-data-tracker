@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">My Data Tracker</title>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --success: #16a34a; --danger: #ef4444; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 850px; }
+        
+        .header-section { margin-bottom: 2rem; width: 100%; text-align: center; }
+        .editable-title { font-size: 2.2rem; font-weight: 800; border: none; background: transparent; text-align: center; color: #1e293b; width: 100%; outline: none; padding: 5px; }
+        .editable-title:hover { background: #e2e8f0; border-radius: 8px; }
+
+        .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+        .input-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; flex: 1; min-width: 200px; font-size: 1rem; }
+        
+        /* Search Bar Styling */
+        .search-container { margin-bottom: 15px; position: relative; }
+        .search-input { width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; font-size: 0.9rem; }
+        .search-input:focus { border-color: var(--primary); outline: none; }
+
+        .btn-row { display: flex; gap: 10px; }
+        button { padding: 12px 24px; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-save { background: var(--primary); flex: 2; }
+        .btn-download { background: var(--success); flex: 1; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        th { background: #f1f5f9; padding: 16px; text-align: left; border-bottom: 2px solid #e2e8f0; color: #475569; }
+        td { padding: 16px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+        
+        .delete-btn { background: var(--danger); padding: 6px 12px; font-size: 0.8rem; border-radius: 4px; width: auto; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-section">
+        <input type="text" id="siteName" class="editable-title" value="My Data Tracker" oninput="saveTitle()">
+        <p style="color: #64748b;">Saved to this browser. Download CSV for backup.</p>
+    </div>
+
+    <div class="card">
+        <div class="input-group">
+            <input type="text" id="itemName" placeholder="Date (e.g. 20 monday)">
+            <input type="text" id="itemNote" placeholder="Hours (e.g. 12)">
+               <input type="text" id="itemNote" placeholder="B/s (e.g. 12)">
+        </div>
+        <div class="btn-row">
+            <button class="btn-save" onclick="addData()">Save Entry</button>
+            <button class="btn-download" onclick="downloadCSV()">Download CSV</button>
+        </div>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search table..." onkeyup="filterTable()">
+    </div>
+
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Hours</th>
+                <th>B/s</th>
+                <th>Time</th>
+                <th style="width: 80px;">Action</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    // 1. Storage & Title Logic
+    function saveTitle() {
+        const titleVal = document.getElementById('siteName').value;
+        localStorage.setItem('savedTitle', titleVal);
+        document.title = titleVal;
+    }
+
+    function saveTableToLocal() {
+        const rows = [];
+        document.querySelectorAll('#tableBody tr').forEach(tr => {
+            const cells = tr.querySelectorAll('td');
+            if(cells.length > 0) {
+                rows.push({ name: cells[0].innerText, note: cells[1].innerText, time: cells[2].innerText });
+            }
+        });
+        localStorage.setItem('savedTableData', JSON.stringify(rows));
+    }
+
+    function loadData() {
+        const savedTitle = localStorage.getItem('savedTitle');
+        if (savedTitle) { document.getElementById('siteName').value = savedTitle; document.title = savedTitle; }
+        const savedData = JSON.parse(localStorage.getItem('savedTableData') || '[]');
+        savedData.forEach(item => renderRow(item.name, item.note, item.time));
+    }
+
+    // 2. Search/Filter Logic
+    function filterTable() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#tableBody tr');
+        
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.classList.toggle('hidden', !text.includes(query));
+        });
+    }
+
+    // 3. UI Logic
+    function renderRow(name, note, time) {
+        const tableBody = document.getElementById('tableBody');
+        const row = tableBody.insertRow(0); // Most recent at top
+        row.insertCell(0).innerText = name;
+        row.insertCell(1).innerText = name
+        row.insertCell(2).innerText = note;
+        row.insertCell(3).innerText = time;
+        
+        const actionCell = row.insertCell(4);
+        const delBtn = document.createElement('button');
+        delBtn.innerText = 'Delete';
+        delBtn.className = 'delete-btn';
+        delBtn.onclick = function() {
+            if(confirm('Delete this entry?')) {
+                row.remove();
+                saveTableToLocal();
+            }
+        };
+        actionCell.appendChild(delBtn);
+    }
+
+    function addData() {
+        const nameInput = document.getElementById('itemName');
+        const noteInput = document.getElementById('itemNote');
+        const time = new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+
+        if (!nameInput.value) return alert("Please enter a name");
+
+        renderRow(nameInput.value, noteInput.value, time);
+        saveTableToLocal();
+
+        nameInput.value = '';
+        noteInput.value = '';
+        nameInput.focus();
+    }
+
+    function downloadCSV() {
+        let csv = 'Name,Notes,Timestamp\n';
+        const rows = JSON.parse(localStorage.getItem('savedTableData') || '[]');
+        rows.forEach(row => {
+            csv += `"${row.name.replace(/"/g, '""')}","${row.note.replace(/"/g, '""')}","${row.time}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${document.getElementById('siteName').value}.csv`;
+        a.click();
+    }
+
+    loadData();
+</script>
+
+</body>
+</html>
